@@ -1,5 +1,6 @@
 #include "load_macro_layer.hpp"
 #include "macro_editor.hpp"
+#include "tag_edit_layer.hpp"
 
 #ifdef _MSC_VER
 #pragma optimize("", off)
@@ -25,6 +26,9 @@ bool MacroCell::init(std::filesystem::path path, std::string name, std::time_t d
 	this->mergeLayer = mergeLayer;
 	this->loadLayer = loadLayer;
 	this->isMerge = mergeLayer != nullptr;
+
+	this->metadata = Macro::peekMetadata(path);
+	this->tags = Tags::get(path.parent_path(), path.filename().string());
 
 	bool autosave = false;
 
@@ -55,33 +59,45 @@ bool MacroCell::init(std::filesystem::path path, std::string name, std::time_t d
 	lbl->updateLabel();
 	addChild(lbl);
 
-	lbl->setPosition({ 10, 23 });
+	lbl->setPosition({ 10, 34 });
+
+	std::string extOrLevel = autosave ? "Auto Save" : path.extension().string();
+	if (metadata.valid && !metadata.levelName.empty())
+		extOrLevel = metadata.levelName;
 
 #ifdef GEODE_IS_WINDOWS
-	std::string subText = Utils::formatTime(date) + " | ";
-
-	subText += autosave ? "Auto Save" : path.extension().string();
-
-	lbl = CCLabelBMFont::create(subText.c_str(), "chatFont.fnt");
+	std::string subText = Utils::formatTime(date) + " | " + extOrLevel;
 #else
-	std::string subText = autosave ? "Auto Save" : path.extension().string();
-
-	lbl = CCLabelBMFont::create(subText.c_str(), "chatFont.fnt");
+	std::string subText = extOrLevel;
 #endif
 
-	lbl->setPosition({ 10, 9 });
-	lbl->setScale(0.55f);
+	lbl = CCLabelBMFont::create(subText.c_str(), "chatFont.fnt");
+
+	lbl->limitLabelWidth(280.f, 0.55f, 0.01f);
+	lbl->setPosition({ 10, 21 });
 	lbl->setSkewX(2);
 	lbl->setAnchorPoint({ 0, 0.5 });
 	lbl->setOpacity(80);
 	addChild(lbl);
+
+	if (!tags.empty()) {
+		std::string tagsText = "Tags: " + Tags::join(tags);
+
+		lbl = CCLabelBMFont::create(tagsText.c_str(), "chatFont.fnt");
+		lbl->limitLabelWidth(230.f, 0.45f, 0.01f);
+		lbl->setPosition({ 10, 9 });
+		lbl->setAnchorPoint({ 0, 0.5 });
+		lbl->setOpacity(110);
+		lbl->setColor({ 150, 210, 255 });
+		addChild(lbl);
+	}
 
 	std::string btnText = isMerge ? "Merge" : "Load";
 
 	ButtonSprite* spr = ButtonSprite::create(btnText.c_str());
 	spr->setScale(isMerge ? 0.5425f : 0.62f);
 	CCMenuItemSpriteExtra* btn = CCMenuItemSpriteExtra::create(spr, this, menu_selector(MacroCell::onLoad));
-	btn->setPosition(ccp(isMerge ? 277.26f : 288.26f, 17.5f));
+	btn->setPosition(ccp(isMerge ? 277.26f : 288.26f, 23.f));
 	menu->addChild(btn);
 
 	CCSprite* spr2 = CCSprite::createWithSpriteFrameName("GJ_trashBtn_001.png");
@@ -91,17 +107,29 @@ bool MacroCell::init(std::filesystem::path path, std::string name, std::time_t d
 		this,
 		menu_selector(MacroCell::onDelete)
 	);
-	btn->setPosition(ccp(246, 17.5f));
+	btn->setPosition(ccp(246, 23.f));
 
 	if (!isMerge)
 		menu->addChild(btn);
+
+	if (!isMerge) {
+		ButtonSprite* tagSpr = ButtonSprite::create("Tags", "goldFont.fnt", "GJ_button_04.png", 0.8f);
+		tagSpr->setScale(0.4f);
+		CCMenuItemSpriteExtra* tagBtn = CCMenuItemSpriteExtra::create(
+			tagSpr,
+			this,
+			menu_selector(MacroCell::onEditTags)
+		);
+		tagBtn->setPosition({ 300, 9 });
+		menu->addChild(tagBtn);
+	}
 
 	CCSprite* spriteOn = CCSprite::createWithSpriteFrameName("GJ_checkOn_001.png");
 	CCSprite* spriteOff = CCSprite::createWithSpriteFrameName("GJ_checkOff_001.png");
 
 	toggler = CCMenuItemToggler::create(spriteOff, spriteOn, this, menu_selector(MacroCell::onSelect));
 	toggler->setScale(0.485f);
-	toggler->setPosition({ 220, 17.5 });
+	toggler->setPosition({ 220, 23.f });
 
 	if (!isMerge)
 		menu->addChild(toggler);
@@ -289,6 +317,10 @@ void MacroCell::selectMacro(bool single) {
 
 	if (selectedMacros.size() == layer->allMacros.size() && single)
 		layer->selectAllToggle->toggle(true);
+}
+
+void MacroCell::onEditTags(CCObject*) {
+	TagEditLayer::create(path.parent_path(), path.filename().string(), loadLayer)->show();
 }
 
 #ifdef _MSC_VER

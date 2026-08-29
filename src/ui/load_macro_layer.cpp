@@ -2,6 +2,8 @@
 #include "autosave_settings_layer.hpp"
 #include "macro_editor.hpp"
 
+#include <algorithm>
+
 #ifdef _MSC_VER
 #pragma optimize("", off)
 #endif
@@ -363,6 +365,16 @@ bool LoadMacroLayer::setup() {
   sortToggle->toggle(false);
   menu->addChild(sortToggle);
 
+  sortModeLbl = CCLabelBMFont::create("Date", "bigFont.fnt");
+  sortModeLbl->setScale(0.4f);
+
+  sortModeBtn = CCMenuItemSpriteExtra::create(
+      sortModeLbl, this, menu_selector(LoadMacroLayer::cycleSortMode));
+  sortModeBtn->setPosition({-108, 100});
+  menu->addChild(sortModeBtn);
+
+  updateSortModeLabel();
+
   CCSprite *spriteOn =
       CCSprite::createWithSpriteFrameName("GJ_checkOn_001.png");
   CCSprite *spriteOff =
@@ -460,44 +472,127 @@ void LoadMacroLayer::updateSort(CCObject *) {
   reloadList(0);
 }
 
+void LoadMacroLayer::cycleSortMode(CCObject *) {
+  switch (sortMode) {
+  case MacroSortMode::Name:
+    sortMode = MacroSortMode::Date;
+    break;
+  case MacroSortMode::Date:
+    sortMode = MacroSortMode::Duration;
+    break;
+  case MacroSortMode::Duration:
+    sortMode = MacroSortMode::Name;
+    break;
+  }
+
+  updateSortModeLabel();
+  reloadList(0);
+}
+
+void LoadMacroLayer::updateSortModeLabel() {
+  if (!sortModeLbl)
+    return;
+
+  switch (sortMode) {
+  case MacroSortMode::Name:
+    sortModeLbl->setString("Name");
+    break;
+  case MacroSortMode::Duration:
+    sortModeLbl->setString("Length");
+    break;
+  case MacroSortMode::Date:
+  default:
+    sortModeLbl->setString("Date");
+    break;
+  }
+}
+
 void LoadMacroLayer::addList(bool refresh, float prevScroll) {
   cocos2d::CCSize winSize = cocos2d::CCDirector::sharedDirector()->getWinSize();
 
-  std::filesystem::path path =
+  std::filesystem::path folder =
       Mod::get()->getSettingValue<std::filesystem::path>(
           isAutosaves ? "autosaves_folder" : "macros_folder");
   std::vector<std::filesystem::path> macros =
-      file::readDirectory(path).unwrapOrDefault();
+      file::readDirectory(folder).unwrapOrDefault();
+
+  struct Entry {
+    std::filesystem::path path;
+    std::string name;
+    std::time_t date;
+    std::filesystem::file_time_type mtime;
+    MacroMetadata metadata;
+  };
+
+  std::vector<Entry> entries;
+
+  for (auto &p : macros) {
+
+    if (p.extension() != ".gdr" && p.extension() != ".gdr2" &&
+        p.extension() != ".xd" && p.extension() != ".json")
+      continue;
+
+    std::string name = p.filename().string().substr(
+        0, p.filename().string().find_last_of('.'));
+
+    if (p.extension() == ".json")
+      name = name.substr(0, name.find_last_of('.'));
+
+    MacroMetadata metadata = Macro::peekMetadata(p);
+
+    if (search != "") {
+      std::vector<std::string> tags = Tags::get(folder, p.filename().string());
+
+      std::string haystack = Utils::toLower(name) + " " +
+                              Utils::toLower(metadata.author) + " " +
+                              Utils::toLower(metadata.levelName);
+      for (auto &t : tags)
+        haystack += " " + t;
+
+      if (haystack.find(search) == std::string::npos)
+        continue;
+    }
+
+    std::time_t date = 0;
+
+#ifdef GEODE_IS_WINDOWS
+    date = Utils::getFileCreationTime(p);
+#endif
+
+    std::error_code ec;
+    auto mtime = std::filesystem::last_write_time(p, ec);
+
+    entries.push_back({p, name, date, mtime, metadata});
+  }
+
+  switch (sortMode) {
+  case MacroSortMode::Name:
+    std::sort(entries.begin(), entries.end(),
+              [](Entry const &a, Entry const &b) {
+                return Utils::toLower(a.name) < Utils::toLower(b.name);
+              });
+    break;
+  case MacroSortMode::Duration:
+    std::sort(entries.begin(), entries.end(),
+              [](Entry const &a, Entry const &b) {
+                return a.metadata.duration < b.metadata.duration;
+              });
+    break;
+  case MacroSortMode::Date:
+  default:
+    std::sort(entries.begin(), entries.end(),
+              [](Entry const &a, Entry const &b) { return a.mtime < b.mtime; });
+    break;
+  }
+
+  if (invertSort)
+    std::reverse(entries.begin(), entries.end());
 
   CCArray *cells = CCArray::create();
 
-  int start = invertSort ? macros.size() - 1 : 0;
-  int end = invertSort ? -1 : macros.size();
-  int step = invertSort ? -1 : 1;
-
-  for (int i = start; i != end; i += step) {
-
-    if (macros[i].extension() != ".gdr" && macros[i].extension() != ".gdr2" &&
-        macros[i].extension() != ".xd" && macros[i].extension() != ".json")
-      continue;
-
-    std::string name = macros[i].filename().string().substr(
-        0, macros[i].filename().string().find_last_of('.'));
-
-    if (macros[i].extension() == ".json")
-      name = name.substr(0, name.find_last_of('.'));
-
-    if (Utils::toLower(name).find(search) == std::string::npos && search != "")
-      continue;
-
-    std::time_t date;
-
-#ifdef GEODE_IS_WINDOWS
-    date = Utils::getFileCreationTime(macros[i]);
-#endif
-
+  for (auto &e : entries) {
     MacroCell *cell =
-        MacroCell::create(macros[i], name, date, menuLayer, mergeLayer,
+        MacroCell::create(e.path, e.name, e.date, menuLayer, mergeLayer,
                           static_cast<CCLayer *>(this));
     cells->addObject(cell);
   }
@@ -515,7 +610,7 @@ void LoadMacroLayer::addList(bool refresh, float prevScroll) {
     menu->addChild(lbl);
   }
 
-  ListView *listView = ListView::create(cells, 35, 323, 180);
+  ListView *listView = ListView::create(cells, 46, 323, 180);
   CCNode *contentLayer = static_cast<CCNode *>(
       listView->m_tableView->getChildren()->objectAtIndex(0));
 

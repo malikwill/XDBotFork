@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../includes.hpp"
+#include "../tags.hpp"
 #include "record_layer.hpp"
 #include <locale>
 #include <string>
@@ -16,8 +17,11 @@ class MacroCell : public CCNode {
 	CCLayer* loadLayer = nullptr;
 
 	bool isMerge = false;
-	
+
 public:
+
+	MacroMetadata metadata;
+	std::vector<std::string> tags;
 
 	CCMenu* menu = nullptr;
 	CCMenuItemToggler* toggler = nullptr;
@@ -37,7 +41,11 @@ public:
 	void onSelect(CCObject*);
 
 	void selectMacro(bool single);
+
+	void onEditTags(CCObject*);
 };
+
+enum class MacroSortMode { Name, Date, Duration };
 
 class LoadMacroLayer : public geode::Popup, public TextInputDelegate {
 public:
@@ -48,6 +56,8 @@ public:
 
 	CCMenuItemToggler* selectAllToggle = nullptr;
 	CCMenuItemToggler* sortToggle = nullptr;
+	CCMenuItemSpriteExtra* sortModeBtn = nullptr;
+	CCLabelBMFont* sortModeLbl = nullptr;
 
 	CCMenuItemToggler* p1Toggle = nullptr;
 	CCMenuItemToggler* p2Toggle = nullptr;
@@ -65,6 +75,7 @@ public:
 	bool isAutosaves = false;
 	bool isMerge = false;
 	bool invertSort = false;
+	MacroSortMode sortMode = MacroSortMode::Date;
 
 	static LoadMacroLayer* create(geode::Popup* layer, geode::Popup* layer2, bool autosaves);
 
@@ -93,4 +104,8 @@ public:
 	void onImportMacroFinished(file::PickResult res);
 
 	void updateSort(CCObject*);
+
+	void cycleSortMode(CCObject*);
+
+	void updateSortModeLabel();
 };
