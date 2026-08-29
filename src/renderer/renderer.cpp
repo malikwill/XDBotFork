@@ -548,10 +548,14 @@ void Renderer::start() {
           process.m_stdin.write(frame.data(), frame.size());
 #endif
       } else {
-        // If the queue is empty, wait slightly before checking again
-        if (usingMultithreading) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
+        // Wait until a frame is available or the loop's exit condition
+        // changes, instead of busy-polling. Small timeout kept as a safety
+        // net in case a state change isn't paired with a notify.
+        std::unique_lock<std::mutex> ulock(lock);
+        condVar.wait_for(ulock, std::chrono::milliseconds(5), [this] {
+          return frameHasData || !frameQueue.empty() ||
+                 !(recording || pause || recordingAudio);
+        });
       }
     }
 
@@ -934,10 +938,17 @@ void MyRenderTexture::capture(std::mutex &lock, std::vector<uint8_t> &data,
     if (speedLbl)
       speedLbl->setVisible(false);
 
+    CCNode *etaLbl = pl->getChildByID("render-eta-label"_spr);
+    if (etaLbl)
+      etaLbl->setVisible(false);
+
     pl->visit();
 
     if (speedLbl)
       speedLbl->setVisible(true);
+
+    if (etaLbl)
+      etaLbl->setVisible(true);
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     lock.lock();
@@ -984,10 +995,17 @@ void MyRenderTexture::capture(std::mutex &lock, std::vector<uint8_t> &data,
     if (speedLblExt)
       speedLblExt->setVisible(false);
 
+    CCNode *etaLblExt = pl->getChildByID("render-eta-label"_spr);
+    if (etaLblExt)
+      etaLblExt->setVisible(false);
+
     pl->visit();
 
     if (speedLblExt)
       speedLblExt->setVisible(true);
+
+    if (etaLblExt)
+      etaLblExt->setVisible(true);
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     lock.lock();
@@ -1028,8 +1046,11 @@ void MyRenderTexture::capture(std::mutex &lock, std::vector<uint8_t> &data,
 void Renderer::captureFrame() {
   if (usingMultithreading) {
     // Prevent RAM from filling up if FFmpeg is significantly slower
-    while (frameQueue.size() > 30 && recording) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    {
+      std::unique_lock<std::mutex> ulock(lock);
+      condVar.wait_for(ulock, std::chrono::milliseconds(5), [this] {
+        return frameQueue.size() <= 30 || !recording;
+      });
     }
 
     // Use a temporary buffer so we can push it quickly
@@ -1059,9 +1080,13 @@ void Renderer::captureFrame() {
       lock.lock();
       frameQueue.push(std::move(tempFrame));
       lock.unlock();
+      condVar.notify_one();
     }
   } else {
-    while (frameHasData) {
+    {
+      std::unique_lock<std::mutex> ulock(lock);
+      condVar.wait_for(ulock, std::chrono::milliseconds(5),
+                        [this] { return !frameHasData; });
     }
 
     if (usingManualVFlip) {
@@ -1080,6 +1105,8 @@ void Renderer::captureFrame() {
     } else {
       renderer.capture(lock, currentFrame, frameHasData);
     }
+
+    condVar.notify_one();
   }
 }
 
