@@ -43,6 +43,7 @@ class $modify(PlayLayer) {
   struct Fields {
     CCLabelBMFont *frameLabel = nullptr;
     CCLabelBMFont *speedLabel = nullptr;
+    CCLabelBMFont *etaLabel = nullptr;
   };
 
   void postUpdate(float dt) {
@@ -55,15 +56,52 @@ class $modify(PlayLayer) {
 
     if (m_fields->speedLabel) {
       if (g.renderer.recording) {
-        char buf[32];
         float multiplier = g.renderer.fps > 0
                                 ? g.renderer.renderSpeed / g.renderer.fps
                                 : 0.f;
+
+        char buf[32];
         snprintf(buf, sizeof(buf), "Speed: %.2fx", multiplier);
         m_fields->speedLabel->setString(buf);
         m_fields->speedLabel->setVisible(true);
+
+        if (m_fields->etaLabel) {
+          bool canEstimate = multiplier > 0.f && !g.macro.inputs.empty() &&
+                              g.macro.lastRecordedFrame > 0 &&
+                              g.macro.framerate > 0.f;
+
+          if (canEstimate) {
+            int currentFrame = Global::getCurrentFrame();
+            int remainingMacroFrames =
+                g.macro.lastRecordedFrame - currentFrame;
+            if (remainingMacroFrames < 0)
+              remainingMacroFrames = 0;
+
+            // multiplier = in-game seconds simulated per real second, so
+            // multiply by the macro's own frame rate to get macro-frames
+            // progressed per real second.
+            float macroFramesPerRealSecond = multiplier * g.macro.framerate;
+            float remainingSeconds =
+                macroFramesPerRealSecond > 0.f
+                    ? remainingMacroFrames / macroFramesPerRealSecond
+                    : 0.f;
+
+            int totalSec = static_cast<int>(remainingSeconds);
+            int mm = totalSec / 60;
+            int ss = totalSec % 60;
+
+            char etaBuf[32];
+            snprintf(etaBuf, sizeof(etaBuf), "ETA: %d:%02d", mm, ss);
+            m_fields->etaLabel->setString(etaBuf);
+            m_fields->etaLabel->setVisible(true);
+          } else {
+            m_fields->etaLabel->setVisible(false);
+          }
+        }
       } else {
         m_fields->speedLabel->setVisible(false);
+        if (m_fields->etaLabel)
+          m_fields->etaLabel->setVisible(false);
       }
     }
   }
@@ -79,6 +117,8 @@ class $modify(PlayLayer) {
         static_cast<CCLabelBMFont *>(getChildByID("frame-label"_spr));
     m_fields->speedLabel =
         static_cast<CCLabelBMFont *>(getChildByID("render-speed-label"_spr));
+    m_fields->etaLabel =
+        static_cast<CCLabelBMFont *>(getChildByID("render-eta-label"_spr));
 
     return true;
   }
@@ -115,6 +155,17 @@ void Interface::addLabels(PlayLayer *pl) {
       {CCDirector::sharedDirector()->getWinSize().width - 6.5f, 28});
   lbl->setAnchorPoint({1, 0.5});
   lbl->setID("render-speed-label"_spr);
+  lbl->setZOrder(300);
+  lbl->setScale(0.625f);
+  lbl->setOpacity(static_cast<int>(0.85f * 255));
+  lbl->setVisible(false);
+  pl->addChild(lbl);
+
+  lbl = CCLabelBMFont::create("", "chatFont.fnt");
+  lbl->setPosition(
+      {CCDirector::sharedDirector()->getWinSize().width - 6.5f, 17});
+  lbl->setAnchorPoint({1, 0.5});
+  lbl->setID("render-eta-label"_spr);
   lbl->setZOrder(300);
   lbl->setScale(0.625f);
   lbl->setOpacity(static_cast<int>(0.85f * 255));
