@@ -44,6 +44,8 @@ class $modify(PlayLayer) {
     CCLabelBMFont *frameLabel = nullptr;
     CCLabelBMFont *speedLabel = nullptr;
     CCLabelBMFont *etaLabel = nullptr;
+    CCLabelBMFont *timeLabel = nullptr;
+    CCLabelBMFont *settingsLabel = nullptr;
   };
 
   void postUpdate(float dt) {
@@ -98,10 +100,41 @@ class $modify(PlayLayer) {
             m_fields->etaLabel->setVisible(false);
           }
         }
+
+        if (m_fields->timeLabel) {
+          auto elapsed = std::chrono::steady_clock::now() -
+                         g.renderer.renderStartTime;
+          int totalSec = static_cast<int>(
+              std::chrono::duration<double>(elapsed).count());
+          int hh = totalSec / 3600;
+          int mm = (totalSec % 3600) / 60;
+          int ss = totalSec % 60;
+
+          char timeBuf[32];
+          snprintf(timeBuf, sizeof(timeBuf), "Time: %d:%02d:%02d", hh, mm,
+                   ss);
+          m_fields->timeLabel->setString(timeBuf);
+          m_fields->timeLabel->setVisible(true);
+        }
+
+        if (m_fields->settingsLabel) {
+          char settingsBuf[64];
+          snprintf(settingsBuf, sizeof(settingsBuf), "%ux%u @ %ufps | %s | %s",
+                   g.renderer.width, g.renderer.height, g.renderer.fps,
+                   g.renderer.bitrate.c_str(),
+                   g.renderer.codec.empty() ? "default"
+                                             : g.renderer.codec.c_str());
+          m_fields->settingsLabel->setString(settingsBuf);
+          m_fields->settingsLabel->setVisible(true);
+        }
       } else {
         m_fields->speedLabel->setVisible(false);
         if (m_fields->etaLabel)
           m_fields->etaLabel->setVisible(false);
+        if (m_fields->timeLabel)
+          m_fields->timeLabel->setVisible(false);
+        if (m_fields->settingsLabel)
+          m_fields->settingsLabel->setVisible(false);
       }
     }
   }
@@ -119,6 +152,10 @@ class $modify(PlayLayer) {
         static_cast<CCLabelBMFont *>(getChildByID("render-speed-label"_spr));
     m_fields->etaLabel =
         static_cast<CCLabelBMFont *>(getChildByID("render-eta-label"_spr));
+    m_fields->timeLabel =
+        static_cast<CCLabelBMFont *>(getChildByID("render-time-label"_spr));
+    m_fields->settingsLabel = static_cast<CCLabelBMFont *>(
+        getChildByID("render-settings-label"_spr));
 
     return true;
   }
@@ -151,9 +188,8 @@ void Interface::addLabels(PlayLayer *pl) {
   pl->addChild(lbl);
 
   lbl = CCLabelBMFont::create("", "chatFont.fnt");
-  lbl->setPosition(
-      {CCDirector::sharedDirector()->getWinSize().width - 6.5f, 28});
-  lbl->setAnchorPoint({1, 0.5});
+  lbl->setPosition({CCDirector::sharedDirector()->getWinSize().width / 2, 28});
+  lbl->setAnchorPoint({0.5, 0.5});
   lbl->setID("render-speed-label"_spr);
   lbl->setZOrder(300);
   lbl->setScale(0.625f);
@@ -162,10 +198,29 @@ void Interface::addLabels(PlayLayer *pl) {
   pl->addChild(lbl);
 
   lbl = CCLabelBMFont::create("", "chatFont.fnt");
-  lbl->setPosition(
-      {CCDirector::sharedDirector()->getWinSize().width - 6.5f, 17});
-  lbl->setAnchorPoint({1, 0.5});
+  lbl->setPosition({CCDirector::sharedDirector()->getWinSize().width / 2, 17});
+  lbl->setAnchorPoint({0.5, 0.5});
   lbl->setID("render-eta-label"_spr);
+  lbl->setZOrder(300);
+  lbl->setScale(0.625f);
+  lbl->setOpacity(static_cast<int>(0.85f * 255));
+  lbl->setVisible(false);
+  pl->addChild(lbl);
+
+  lbl = CCLabelBMFont::create("", "chatFont.fnt");
+  lbl->setPosition({6.5f, 28});
+  lbl->setAnchorPoint({0, 0.5});
+  lbl->setID("render-time-label"_spr);
+  lbl->setZOrder(300);
+  lbl->setScale(0.625f);
+  lbl->setOpacity(static_cast<int>(0.85f * 255));
+  lbl->setVisible(false);
+  pl->addChild(lbl);
+
+  lbl = CCLabelBMFont::create("", "chatFont.fnt");
+  lbl->setPosition({6.5f, 17});
+  lbl->setAnchorPoint({0, 0.5});
+  lbl->setID("render-settings-label"_spr);
   lbl->setZOrder(300);
   lbl->setScale(0.625f);
   lbl->setOpacity(static_cast<int>(0.85f * 255));
