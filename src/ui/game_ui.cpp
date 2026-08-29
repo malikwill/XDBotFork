@@ -1,6 +1,7 @@
 #include "game_ui.hpp"
 #include "../includes.hpp"
 
+#include <cstdio>
 #include <Geode/modify/PlayLayer.hpp>
 
 class HoldStepButton : public cocos2d::CCMenuItemSprite {
@@ -41,6 +42,7 @@ class $modify(PlayLayer) {
 
   struct Fields {
     CCLabelBMFont *frameLabel = nullptr;
+    CCLabelBMFont *speedLabel = nullptr;
   };
 
   void postUpdate(float dt) {
@@ -50,6 +52,20 @@ class $modify(PlayLayer) {
     if (g.state != state::none && g.frameLabel && !g.renderer.recording)
       m_fields->frameLabel->setString(
           ("Frame: " + std::to_string(Global::getCurrentFrame())).c_str());
+
+    if (m_fields->speedLabel) {
+      if (g.renderer.recording) {
+        char buf[32];
+        float multiplier = g.renderer.fps > 0
+                                ? g.renderer.renderSpeed / g.renderer.fps
+                                : 0.f;
+        snprintf(buf, sizeof(buf), "Speed: %.2fx", multiplier);
+        m_fields->speedLabel->setString(buf);
+        m_fields->speedLabel->setVisible(true);
+      } else {
+        m_fields->speedLabel->setVisible(false);
+      }
+    }
   }
 
   bool init(GJGameLevel *level, bool b1, bool b2) {
@@ -61,6 +77,8 @@ class $modify(PlayLayer) {
 
     m_fields->frameLabel =
         static_cast<CCLabelBMFont *>(getChildByID("frame-label"_spr));
+    m_fields->speedLabel =
+        static_cast<CCLabelBMFont *>(getChildByID("render-speed-label"_spr));
 
     return true;
   }
@@ -89,6 +107,17 @@ void Interface::addLabels(PlayLayer *pl) {
   lbl->setID("recording-audio-label"_spr);
   lbl->setZOrder(300);
   lbl->setOpacity(75);
+  lbl->setVisible(false);
+  pl->addChild(lbl);
+
+  lbl = CCLabelBMFont::create("", "chatFont.fnt");
+  lbl->setPosition(
+      {CCDirector::sharedDirector()->getWinSize().width - 6.5f, 28});
+  lbl->setAnchorPoint({1, 0.5});
+  lbl->setID("render-speed-label"_spr);
+  lbl->setZOrder(300);
+  lbl->setScale(0.625f);
+  lbl->setOpacity(static_cast<int>(0.85f * 255));
   lbl->setVisible(false);
   pl->addChild(lbl);
 
