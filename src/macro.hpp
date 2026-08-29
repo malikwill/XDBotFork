@@ -35,6 +35,14 @@ struct input : gdr::Input {
     }
 };
 
+struct MacroMetadata {
+    bool valid = false;
+    std::string author;
+    std::string levelName;
+    float duration = 0.f;
+    float framerate = 240.f;
+};
+
 struct Macro : gdr::Replay<Macro, input> {
 
     Macro() : Replay("xdBot", xdBotVersion.c_str()) {}
@@ -65,7 +73,13 @@ public:
 
     static bool isGDR2Data(std::vector<std::uint8_t> const& data);
 
-    static std::optional<Macro> importGDR2(std::vector<std::uint8_t> const& data);
+    static std::optional<Macro> importGDR2(std::vector<std::uint8_t> const& data, bool importInputs = true);
+
+    // Lightweight, cached metadata-only read (author/level/duration/framerate)
+    // without parsing the potentially large inputs array. Safe to call
+    // repeatedly (e.g. every list refresh) - results are cached by path and
+    // only re-read when the file's on-disk modified time changes.
+    static MacroMetadata peekMetadata(std::filesystem::path const& path);
 
     static void resetVariables();
 

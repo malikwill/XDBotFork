@@ -5,8 +5,10 @@
 #include <array>
 #include <bit>
 #include <cstring>
+#include <fstream>
 #include <optional>
 #include <span>
+#include <unordered_map>
 
 #include <Geode/modify/PlayLayer.hpp>
 
@@ -404,7 +406,7 @@ bool Macro::isGDR2Data(std::vector<std::uint8_t> const &data) {
 }
 
 std::optional<Macro> Macro::importGDR2(
-    std::vector<std::uint8_t> const &data) {
+    std::vector<std::uint8_t> const &data, bool importInputs) {
   if (!isGDR2Data(data))
     return std::nullopt;
 
@@ -451,6 +453,9 @@ std::optional<Macro> Macro::importGDR2(
   size_t extensionSize = 0;
   if (!reader.readVarint(extensionSize) || !reader.skip(extensionSize))
     return std::nullopt;
+
+  if (!importInputs)
+    return macro;
 
   size_t deathCount = 0;
   if (!reader.readVarint(deathCount))
@@ -505,6 +510,70 @@ std::optional<Macro> Macro::importGDR2(
   macro.xdBotMacro = macro.botInfo.name == "xdBot";
 
   return macro;
+}
+
+namespace {
+
+struct MetadataCacheEntry {
+  std::filesystem::file_time_type mtime;
+  MacroMetadata metadata;
+};
+
+std::unordered_map<std::string, MetadataCacheEntry> metadataCache;
+
+} // namespace
+
+MacroMetadata Macro::peekMetadata(std::filesystem::path const &path) {
+  std::error_code ec;
+  auto mtime = std::filesystem::last_write_time(path, ec);
+
+  std::string key = path.string();
+
+  if (!ec) {
+    auto it = metadataCache.find(key);
+    if (it != metadataCache.end() && it->second.mtime == mtime)
+      return it->second.metadata;
+  }
+
+  MacroMetadata result;
+
+  // The legacy .xd text format doesn't carry this metadata and its loader
+  // mutates global state, so it isn't safe to peek repeatedly - just skip it.
+  if (path.extension() != ".xd") {
+    std::ifstream f(path.string(), std::ios::binary);
+
+    if (f) {
+      f.seekg(0, std::ios::end);
+      size_t fileSize = static_cast<size_t>(f.tellg());
+      f.seekg(0, std::ios::beg);
+
+      std::vector<std::uint8_t> data(fileSize);
+      f.read(reinterpret_cast<char *>(data.data()), fileSize);
+      f.close();
+
+      if (Macro::isGDR2Data(data)) {
+        if (auto macro = Macro::importGDR2(data, false)) {
+          result.valid = true;
+          result.author = macro->author;
+          result.levelName = macro->levelInfo.name;
+          result.duration = macro->duration;
+          result.framerate = macro->framerate;
+        }
+      } else {
+        Macro macro = Macro::importData(data, false);
+        result.valid = true;
+        result.author = macro.author;
+        result.levelName = macro.levelInfo.name;
+        result.duration = macro.duration;
+        result.framerate = macro.framerate;
+      }
+    }
+  }
+
+  if (!ec)
+    metadataCache[key] = {mtime, result};
+
+  return result;
 }
 
 void Macro::resetVariables() {
