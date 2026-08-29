@@ -133,6 +133,7 @@ public:
   bool continueBotting = false;
   bool continueBottingSpeedhack = false;
   int continueFrame = -1;
+  bool macroJustLoaded = false;
   bool tpsEnabled = false;
   float tps = 240.f;
   bool previousTpsEnabled = false;
