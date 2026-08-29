@@ -37,7 +37,7 @@ class $modify(CCScheduler) {
     bool usingAudioSync = g.speedhackAudio;
 
     if (g.continueBottingSpeedhack && g.continueBotting) {
-      speedhack = 5.0f;
+      speedhack = 3.0f;
       usingAudioSync = false;
     } else if (g.speedhackEnabled && !g.frameStepper) {
       std::string speedhackValue =
