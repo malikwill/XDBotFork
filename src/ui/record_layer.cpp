@@ -262,6 +262,13 @@ void RecordLayer::toggleRecording(CCObject *) {
     g.currentFrameFix = 0;
     g.restart = true;
 
+    if (g.macroJustLoaded) {
+      g.macro.inputs.clear();
+      g.macro.frameFixes.clear();
+      g.checkpoints.clear();
+      g.macroJustLoaded = false;
+    }
+
     PlayLayer *pl = PlayLayer::get();
     if (pl) {
       if (!pl->m_isPaused)

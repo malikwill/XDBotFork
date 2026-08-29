@@ -181,6 +181,7 @@ void MacroCell::handleLoad() {
 	g.currentFrameFix = 0;
 	g.restart = true;
 	g.macro.canChangeFPS = false;
+	g.macroJustLoaded = true;
 
     g.macro.xdBotMacro = g.macro.botInfo.name == "xdBot";
 	bool legacyGdrMacro = path.extension() == ".gdr" && !g.macro.xdBotMacro;
