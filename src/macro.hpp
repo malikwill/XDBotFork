@@ -243,7 +243,6 @@ struct PlayerData {
     double m_maybeReverseAcceleration;
     float m_xVelocityRelated2;
     bool m_isDashing;
-    int m_unk9e8;
     int m_groundObjectMaterial;
     float m_vehicleSize;
     float m_playerSpeed;
@@ -316,7 +315,6 @@ struct PlayerData {
     int m_stateForce;
     cocos2d::CCPoint m_stateForceVector;
     bool m_affectedByForces;
-    float m_somethingPlayerSpeedTime;
     float m_playerSpeedAC;
     bool m_fixRobotJump;
     bool m_inputsLocked;
