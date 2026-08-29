@@ -14,6 +14,7 @@ add_library(${PROJECT_NAME} SHARED
     src/global.cpp
     src/pathfinder.cpp
     src/macro.cpp
+    src/tags.cpp
     src/keybinds.cpp
     src/utils/utils.cpp
     src/gdr/gdr.cpp
@@ -36,6 +37,7 @@ add_library(${PROJECT_NAME} SHARED
     src/ui/render_settings_layer.cpp
     src/ui/load_macro_layer.cpp
     src/ui/macro_cell.cpp
+    src/ui/tag_edit_layer.cpp
     src/ui/clickbot_layer.cpp
     src/ui/button_setting.cpp
 
