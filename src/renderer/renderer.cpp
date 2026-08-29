@@ -348,6 +348,9 @@ void Renderer::start() {
   startedAudio = false;
   timeAfter = 0.f;
   finishFrame = 0;
+  framesSinceSpeedUpdate = 0;
+  renderSpeed = 0.f;
+  speedTimerStart = std::chrono::steady_clock::now();
   pauseAttempts = 0;
   lastFrame_t = extra_t = 0;
 
@@ -927,7 +930,14 @@ void MyRenderTexture::capture(std::mutex &lock, std::vector<uint8_t> &data,
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
+    CCNode *speedLbl = pl->getChildByID("render-speed-label"_spr);
+    if (speedLbl)
+      speedLbl->setVisible(false);
+
     pl->visit();
+
+    if (speedLbl)
+      speedLbl->setVisible(true);
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     lock.lock();
@@ -970,7 +980,14 @@ void MyRenderTexture::capture(std::mutex &lock, std::vector<uint8_t> &data,
     glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &old_fbo);
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo);
 
+    CCNode *speedLblExt = pl->getChildByID("render-speed-label"_spr);
+    if (speedLblExt)
+      speedLblExt->setVisible(false);
+
     pl->visit();
+
+    if (speedLblExt)
+      speedLblExt->setVisible(true);
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     lock.lock();
@@ -1102,6 +1119,17 @@ void Renderer::handleRecording(PlayLayer *pl, int frame) {
         fmod->setMusicTimeMS(correctMusicTime, true, 0);
 
       captureFrame();
+
+      framesSinceSpeedUpdate++;
+      auto sinceSpeedUpdate = std::chrono::steady_clock::now() - speedTimerStart;
+      double speedElapsedSec =
+          std::chrono::duration<double>(sinceSpeedUpdate).count();
+      if (speedElapsedSec >= 1.0) {
+        renderSpeed =
+            static_cast<float>(framesSinceSpeedUpdate / speedElapsedSec);
+        framesSinceSpeedUpdate = 0;
+        speedTimerStart = std::chrono::steady_clock::now();
+      }
     }
   } else
     stop(frame);

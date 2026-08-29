@@ -67,6 +67,11 @@ public:
   std::string ffmpegPath = (geode::dirs::getGameDir() / "ffmpeg.exe").string();
   std::unordered_set<int> renderedFrames;
 
+  // Render speed tracking (frames captured per real second)
+  std::chrono::steady_clock::time_point speedTimerStart;
+  int framesSinceSpeedUpdate = 0;
+  float renderSpeed = 0.f;
+
   // NakoMod Multithreading queue additions
   std::queue<std::vector<uint8_t>> frameQueue;
   std::condition_variable condVar;
