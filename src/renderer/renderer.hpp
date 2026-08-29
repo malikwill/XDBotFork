@@ -69,6 +69,7 @@ public:
 
   // Render speed tracking (frames captured per real second)
   std::chrono::steady_clock::time_point speedTimerStart;
+  std::chrono::steady_clock::time_point renderStartTime;
   int framesSinceSpeedUpdate = 0;
   float renderSpeed = 0.f;
 

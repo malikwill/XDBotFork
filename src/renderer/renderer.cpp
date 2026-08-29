@@ -351,6 +351,7 @@ void Renderer::start() {
   framesSinceSpeedUpdate = 0;
   renderSpeed = 0.f;
   speedTimerStart = std::chrono::steady_clock::now();
+  renderStartTime = speedTimerStart;
   pauseAttempts = 0;
   lastFrame_t = extra_t = 0;
 
@@ -942,6 +943,14 @@ void MyRenderTexture::capture(std::mutex &lock, std::vector<uint8_t> &data,
     if (etaLbl)
       etaLbl->setVisible(false);
 
+    CCNode *timeLbl = pl->getChildByID("render-time-label"_spr);
+    if (timeLbl)
+      timeLbl->setVisible(false);
+
+    CCNode *settingsLbl = pl->getChildByID("render-settings-label"_spr);
+    if (settingsLbl)
+      settingsLbl->setVisible(false);
+
     pl->visit();
 
     if (speedLbl)
@@ -949,6 +958,12 @@ void MyRenderTexture::capture(std::mutex &lock, std::vector<uint8_t> &data,
 
     if (etaLbl)
       etaLbl->setVisible(true);
+
+    if (timeLbl)
+      timeLbl->setVisible(true);
+
+    if (settingsLbl)
+      settingsLbl->setVisible(true);
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     lock.lock();
@@ -999,6 +1014,14 @@ void MyRenderTexture::capture(std::mutex &lock, std::vector<uint8_t> &data,
     if (etaLblExt)
       etaLblExt->setVisible(false);
 
+    CCNode *timeLblExt = pl->getChildByID("render-time-label"_spr);
+    if (timeLblExt)
+      timeLblExt->setVisible(false);
+
+    CCNode *settingsLblExt = pl->getChildByID("render-settings-label"_spr);
+    if (settingsLblExt)
+      settingsLblExt->setVisible(false);
+
     pl->visit();
 
     if (speedLblExt)
@@ -1006,6 +1029,12 @@ void MyRenderTexture::capture(std::mutex &lock, std::vector<uint8_t> &data,
 
     if (etaLblExt)
       etaLblExt->setVisible(true);
+
+    if (timeLblExt)
+      timeLblExt->setVisible(true);
+
+    if (settingsLblExt)
+      settingsLblExt->setVisible(true);
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     lock.lock();
