@@ -57,7 +57,11 @@ add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode)
 setup_geode_mod(${PROJECT_NAME})
 
 if (WIN32)
-    set(DESKTOP_GEODE_MODS_DIR "C:/Users/drean/OneDrive/Desktop/GeometryDash/geode/mods")
+    if(DEFINED ENV{GEODE_MODS_DIR})
+        set(DESKTOP_GEODE_MODS_DIR "$ENV{GEODE_MODS_DIR}")
+    else()
+        set(DESKTOP_GEODE_MODS_DIR "$ENV{LOCALAPPDATA}/GeometryDash/geode/mods")
+    endif()
     add_custom_target(${PROJECT_NAME}_DEPLOY_DESKTOP ALL
         DEPENDS ${PROJECT_NAME}_PACKAGE
         COMMAND ${CMAKE_COMMAND} -E make_directory "${DESKTOP_GEODE_MODS_DIR}"
