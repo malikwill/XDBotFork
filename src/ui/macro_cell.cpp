@@ -64,8 +64,11 @@ bool MacroCell::init(std::filesystem::path path, std::string name, std::time_t d
 	this->autosave = autosave;
 
 	std::string extOrLevel = autosave ? "Auto Save" : path.extension().string();
-	if (metadata.valid && !metadata.levelName.empty())
-		extOrLevel = metadata.levelName;
+	if (metadata.valid && (!metadata.botVersion.empty() || !metadata.author.empty())) {
+		std::string ver = metadata.botVersion.empty() ? "?" : metadata.botVersion;
+		std::string creator = metadata.author.empty() ? "Unknown" : metadata.author;
+		extOrLevel = ver + " | " + creator;
+	}
 
 #ifdef GEODE_IS_WINDOWS
 	std::string subText = Utils::formatTime(date) + " | " + extOrLevel;
@@ -319,13 +322,20 @@ void MacroCell::refreshMetadata() {
 
 	metadata = Macro::peekMetadata(path);
 
-	if (!metadata.valid || metadata.levelName.empty() || !subLabel)
+	if (!metadata.valid || !subLabel)
 		return;
 
+	if (metadata.botVersion.empty() && metadata.author.empty())
+		return;
+
+	std::string ver = metadata.botVersion.empty() ? "?" : metadata.botVersion;
+	std::string creator = metadata.author.empty() ? "Unknown" : metadata.author;
+	std::string info = ver + " | " + creator;
+
 #ifdef GEODE_IS_WINDOWS
-	std::string subText = Utils::formatTime(date) + " | " + metadata.levelName;
+	std::string subText = Utils::formatTime(date) + " | " + info;
 #else
-	std::string subText = metadata.levelName;
+	std::string subText = info;
 #endif
 
 	subLabel->setString(subText.c_str());

@@ -139,10 +139,6 @@ public:
 
   void toggleFPS(bool on);
 
-  void onDiscord(CCObject *);
-
-  void onTelegram(CCObject *);
-
   void updateTPS();
 
   void showKeybindsWarning();

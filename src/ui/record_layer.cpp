@@ -801,6 +801,12 @@ bool RecordLayer::setup() {
   versionLabel->setSkewX(4);
   menu->addChild(versionLabel);
 
+  versionLabel->runAction(CCRepeatForever::create(CCSequence::create(
+      CCTintTo::create(0.5f, 255, 0, 0), CCTintTo::create(0.5f, 255, 127, 0),
+      CCTintTo::create(0.5f, 255, 255, 0), CCTintTo::create(0.5f, 0, 255, 0),
+      CCTintTo::create(0.5f, 0, 255, 255), CCTintTo::create(0.5f, 0, 0, 255),
+      CCTintTo::create(0.5f, 255, 0, 255), nullptr)));
+
 #ifdef GEODE_IS_WINDOWS
 
   CCLabelBMFont *codecBtnLbl = CCLabelBMFont::create("?", "chatFont.fnt");
@@ -1174,31 +1180,6 @@ bool RecordLayer::setup() {
 
   goToSettingsPage(g.currentPage);
 
-  CCSprite *dickordSpr =
-      CCSprite::createWithSpriteFrameName("gj_discordIcon_001.png");
-  dickordSpr->setScale(0.9f);
-  CCMenuItemSpriteExtra *dickordBtn = CCMenuItemSpriteExtra::create(
-      dickordSpr, this, menu_selector(RecordLayer::onDiscord));
-  dickordBtn->setPosition((CCDirector::sharedDirector()->getWinSize() / 2 -
-                           m_size / 2 + ccp(-16, 16)));
-  m_buttonMenu->addChild(dickordBtn);
-
-  CCSprite *telegramSpr = CCSprite::create("telegram.png"_spr);
-  if (telegramSpr) {
-    telegramSpr->setScale(0.9f);
-    CCMenuItemSpriteExtra *telegramBtn = CCMenuItemSpriteExtra::create(
-        telegramSpr, this, menu_selector(RecordLayer::onTelegram));
-    telegramBtn->setPosition((CCDirector::sharedDirector()->getWinSize() / 2 -
-                              m_size / 2 + ccp(-16, 16 + 32)));
-    m_buttonMenu->addChild(telegramBtn);
-  }
-
-  if (!Mod::get()->setSavedValue<bool>("dickord", true))
-    dickordSpr->runAction(CCSequence::create(
-        CCScaleTo::create(0.25f, 1.5f), CCRotateTo::create(0.25f, 90),
-        CCRotateTo::create(0.25f, 180), CCRotateTo::create(0.25f, 270),
-        CCRotateTo::create(0.25f, 0), CCScaleTo::create(0.25f, 0.9f), nullptr));
-
   return true;
 }
 
@@ -1487,26 +1468,6 @@ void RecordLayer::goToSettingsPage(int page) {
   updateTPS();
 
   Mod::get()->setSavedValue("current_page", page);
-}
-
-void RecordLayer::onDiscord(CCObject *) {
-  geode::createQuickPopup(
-      "Discord",
-      "Join the <cb>Discord</c> server?\n(<cl>discord.gg/w6yvdzVzBd</c>).",
-      "No", "Yes", [](auto, bool btn2) {
-        if (btn2)
-          geode::utils::web::openLinkInBrowser("https://discord.gg/w6yvdzVzBd");
-      });
-}
-
-void RecordLayer::onTelegram(CCObject *) {
-  geode::createQuickPopup(
-      "Telegram",
-      "Join the <cy>Telegram</c> channel?\n(<cl>t.me/gdmacros</c>).", "No",
-      "Yes", [](auto, bool btn2) {
-        if (btn2)
-          geode::utils::web::openLinkInBrowser("https://t.me/gdmacros");
-      });
 }
 
 void RecordLayer::checkAudioSpeedhack() {
