@@ -17,15 +17,10 @@ class $modify(GJBaseGameLayer) {
         float realDt = dt + g.leftOver;
         if (realDt > dt && newDt < dt) realDt = dt;
 
-        auto startTime = std::chrono::high_resolution_clock::now();
         int mult = static_cast<int>(realDt / newDt);
 
         for (int i = 0; i < mult; ++i) {
             GJBaseGameLayer::update(newDt);
-            if (std::chrono::high_resolution_clock::now() - startTime > std::chrono::duration<double, std::milli>(16.666f)) {
-                mult = i + 1;
-                break;
-            }
         }
 
         g.leftOver += (dt - newDt * mult);
