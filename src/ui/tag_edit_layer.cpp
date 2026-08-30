@@ -18,30 +18,46 @@ TagEditLayer *TagEditLayer::create(std::filesystem::path const &folder,
   return nullptr;
 }
 
+TagEditLayer *TagEditLayer::create(std::filesystem::path const &folder,
+                                    std::string const &filename,
+                                    CCLayer *loadLayer) {
+  TagEditLayer *ret = new TagEditLayer();
+  if (ret->init(240.f, 130.f)) {
+    ret->folder = folder;
+    ret->filename = filename;
+    ret->loadLayer = loadLayer;
+    ret->setup();
+    ret->autorelease();
+    return ret;
+  }
+
+  delete ret;
+  return nullptr;
+}
+
 bool TagEditLayer::setup() {
   setTitle("Edit Tags");
 
   CCMenu *menu = CCMenu::create();
-  m_mainLayer->addChild(menu);
+  menu->setContentSize(m_mainLayer->getContentSize());
+  menu->setPosition({0, 0});
+  m_mainLayer->addChildAtPosition(menu, Anchor::Center);
 
   tagsInput = TextInput::create(200, "e.g. speedrun, easy", "chatFont.fnt");
-  tagsInput->setPosition({120, 78});
   tagsInput->setString(Tags::join(Tags::get(folder, filename)).c_str());
-  menu->addChild(tagsInput);
+  menu->addChildAtPosition(tagsInput, Anchor::Center, {0, 20});
 
   CCLabelBMFont *lbl =
       CCLabelBMFont::create("Comma-separated tags", "chatFont.fnt");
-  lbl->setPosition({120, 58});
   lbl->setScale(0.5f);
   lbl->setOpacity(120);
-  menu->addChild(lbl);
+  menu->addChildAtPosition(lbl, Anchor::Center, {0, 0});
 
   ButtonSprite *spr = ButtonSprite::create("Save");
   spr->setScale(0.725f);
   CCMenuItemSpriteExtra *btn = CCMenuItemSpriteExtra::create(
       spr, this, menu_selector(TagEditLayer::onSave));
-  btn->setPosition({120, 28});
-  menu->addChild(btn);
+  menu->addChildAtPosition(btn, Anchor::Center, {0, -30});
 
   return true;
 }

@@ -507,6 +507,20 @@ void LoadMacroLayer::updateSortModeLabel() {
   }
 }
 
+void LoadMacroLayer::processMetadataChunk(float dt) {
+  const size_t chunkSize = 6;
+
+  size_t end = std::min(metadataProgress + chunkSize, allMacros.size());
+
+  for (size_t i = metadataProgress; i < end; i++)
+    allMacros[i]->refreshMetadata();
+
+  metadataProgress = end;
+
+  if (metadataProgress >= allMacros.size())
+    this->unschedule(schedule_selector(LoadMacroLayer::processMetadataChunk));
+}
+
 void LoadMacroLayer::addList(bool refresh, float prevScroll) {
   cocos2d::CCSize winSize = cocos2d::CCDirector::sharedDirector()->getWinSize();
 
@@ -526,6 +540,8 @@ void LoadMacroLayer::addList(bool refresh, float prevScroll) {
 
   std::vector<Entry> entries;
 
+  bool needsMetadata = search != "" || sortMode == MacroSortMode::Duration;
+
   for (auto &p : macros) {
 
     if (p.extension() != ".gdr" && p.extension() != ".gdr2" &&
@@ -538,7 +554,7 @@ void LoadMacroLayer::addList(bool refresh, float prevScroll) {
     if (p.extension() == ".json")
       name = name.substr(0, name.find_last_of('.'));
 
-    MacroMetadata metadata = Macro::peekMetadata(p);
+    MacroMetadata metadata = needsMetadata ? Macro::peekMetadata(p) : MacroMetadata{};
 
     if (search != "") {
       std::vector<std::string> tags = Tags::get(folder, p.filename().string());
@@ -640,6 +656,13 @@ void LoadMacroLayer::addList(bool refresh, float prevScroll) {
       it++;
       cell->m_backgroundLayer->setColor(col);
     }
+  }
+
+  this->unschedule(schedule_selector(LoadMacroLayer::processMetadataChunk));
+
+  if (!needsMetadata && !allMacros.empty()) {
+    metadataProgress = 0;
+    this->schedule(schedule_selector(LoadMacroLayer::processMetadataChunk), 0.02f);
   }
 
   GJCommentListLayer *listLayer = GJCommentListLayer::create(

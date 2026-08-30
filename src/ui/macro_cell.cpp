@@ -6,9 +6,9 @@
 #pragma optimize("", off)
 #endif
 
-MacroCell* MacroCell::create(std::filesystem::path path, std::string name, std::time_t date, geode::Popup* menuLayer, geode::Popup* mergeLayer, CCLayer* loadLayer) {
+MacroCell* MacroCell::create(std::filesystem::path path, std::string name, std::time_t date, MacroMetadata metadata, geode::Popup* menuLayer, geode::Popup* mergeLayer, CCLayer* loadLayer) {
 	MacroCell* ret = new MacroCell();
-	if (!ret->init(path, name, date, menuLayer, mergeLayer, loadLayer)) {
+	if (!ret->init(path, name, date, metadata, menuLayer, mergeLayer, loadLayer)) {
 		delete ret;
 		return nullptr;
 	}
@@ -17,7 +17,7 @@ MacroCell* MacroCell::create(std::filesystem::path path, std::string name, std::
 	return ret;
 }
 
-bool MacroCell::init(std::filesystem::path path, std::string name, std::time_t date, geode::Popup* menuLayer, geode::Popup* mergeLayer, CCLayer* loadLayer) {
+bool MacroCell::init(std::filesystem::path path, std::string name, std::time_t date, MacroMetadata metadata, geode::Popup* menuLayer, geode::Popup* mergeLayer, CCLayer* loadLayer) {
 
 	this->path = path;
 	this->date = date;
@@ -27,7 +27,7 @@ bool MacroCell::init(std::filesystem::path path, std::string name, std::time_t d
 	this->loadLayer = loadLayer;
 	this->isMerge = mergeLayer != nullptr;
 
-	this->metadata = Macro::peekMetadata(path);
+	this->metadata = metadata;
 	this->tags = Tags::get(path.parent_path(), path.filename().string());
 
 	bool autosave = false;
@@ -61,6 +61,8 @@ bool MacroCell::init(std::filesystem::path path, std::string name, std::time_t d
 
 	lbl->setPosition({ 10, 34 });
 
+	this->autosave = autosave;
+
 	std::string extOrLevel = autosave ? "Auto Save" : path.extension().string();
 	if (metadata.valid && !metadata.levelName.empty())
 		extOrLevel = metadata.levelName;
@@ -71,26 +73,26 @@ bool MacroCell::init(std::filesystem::path path, std::string name, std::time_t d
 	std::string subText = extOrLevel;
 #endif
 
-	lbl = CCLabelBMFont::create(subText.c_str(), "chatFont.fnt");
+	subLabel = CCLabelBMFont::create(subText.c_str(), "chatFont.fnt");
 
-	lbl->limitLabelWidth(280.f, 0.55f, 0.01f);
-	lbl->setPosition({ 10, 21 });
-	lbl->setSkewX(2);
+	subLabel->limitLabelWidth(280.f, 0.55f, 0.01f);
+	subLabel->setPosition({ 10, 21 });
+	subLabel->setSkewX(2);
+	subLabel->setAnchorPoint({ 0, 0.5 });
+	subLabel->setOpacity(80);
+	addChild(subLabel);
+
+	std::string tagsText = tags.empty() ? "+ Add Tags" : "Tags: " + Tags::join(tags);
+
+	lbl = CCLabelBMFont::create(tagsText.c_str(), "chatFont.fnt");
+	lbl->limitLabelWidth(150.f, 0.45f, 0.01f);
 	lbl->setAnchorPoint({ 0, 0.5 });
-	lbl->setOpacity(80);
-	addChild(lbl);
+	lbl->setOpacity(tags.empty() ? 70 : 110);
+	lbl->setColor(tags.empty() ? ccc3(255, 255, 255) : ccc3(150, 210, 255));
 
-	if (!tags.empty()) {
-		std::string tagsText = "Tags: " + Tags::join(tags);
-
-		lbl = CCLabelBMFont::create(tagsText.c_str(), "chatFont.fnt");
-		lbl->limitLabelWidth(230.f, 0.45f, 0.01f);
-		lbl->setPosition({ 10, 9 });
-		lbl->setAnchorPoint({ 0, 0.5 });
-		lbl->setOpacity(110);
-		lbl->setColor({ 150, 210, 255 });
-		addChild(lbl);
-	}
+	CCMenuItemSpriteExtra* tagsBtn = CCMenuItemSpriteExtra::create(lbl, this, menu_selector(MacroCell::onEditTags));
+	tagsBtn->setPosition({ 10 + lbl->getScaledContentSize().width / 2, 9 });
+	menu->addChild(tagsBtn);
 
 	std::string btnText = isMerge ? "Merge" : "Load";
 
@@ -111,18 +113,6 @@ bool MacroCell::init(std::filesystem::path path, std::string name, std::time_t d
 
 	if (!isMerge)
 		menu->addChild(btn);
-
-	if (!isMerge) {
-		ButtonSprite* tagSpr = ButtonSprite::create("Tags", "goldFont.fnt", "GJ_button_04.png", 0.8f);
-		tagSpr->setScale(0.4f);
-		CCMenuItemSpriteExtra* tagBtn = CCMenuItemSpriteExtra::create(
-			tagSpr,
-			this,
-			menu_selector(MacroCell::onEditTags)
-		);
-		tagBtn->setPosition({ 300, 9 });
-		menu->addChild(tagBtn);
-	}
 
 	CCSprite* spriteOn = CCSprite::createWithSpriteFrameName("GJ_checkOn_001.png");
 	CCSprite* spriteOff = CCSprite::createWithSpriteFrameName("GJ_checkOff_001.png");
@@ -321,6 +311,24 @@ void MacroCell::selectMacro(bool single) {
 
 void MacroCell::onEditTags(CCObject*) {
 	TagEditLayer::create(path.parent_path(), path.filename().string(), loadLayer)->show();
+}
+
+void MacroCell::refreshMetadata() {
+	if (metadata.valid)
+		return;
+
+	metadata = Macro::peekMetadata(path);
+
+	if (!metadata.valid || metadata.levelName.empty() || !subLabel)
+		return;
+
+#ifdef GEODE_IS_WINDOWS
+	std::string subText = Utils::formatTime(date) + " | " + metadata.levelName;
+#else
+	std::string subText = metadata.levelName;
+#endif
+
+	subLabel->setString(subText.c_str());
 }
 
 #ifdef _MSC_VER

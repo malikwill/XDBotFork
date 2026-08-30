@@ -11,6 +11,7 @@ class MacroCell : public CCNode {
 	std::string name;
 	std::filesystem::path path;
 	std::time_t date;
+	bool autosave = false;
 
 	geode::Popup* menuLayer = nullptr;
 	geode::Popup* mergeLayer = nullptr;
@@ -25,10 +26,11 @@ public:
 
 	CCMenu* menu = nullptr;
 	CCMenuItemToggler* toggler = nullptr;
+	CCLabelBMFont* subLabel = nullptr;
 
-	static MacroCell* create(std::filesystem::path path, std::string name, std::time_t date, geode::Popup* menuLayer, geode::Popup* mergeLayer, CCLayer* loadLayer);
+	static MacroCell* create(std::filesystem::path path, std::string name, std::time_t date, MacroMetadata metadata, geode::Popup* menuLayer, geode::Popup* mergeLayer, CCLayer* loadLayer);
 
-	bool init(std::filesystem::path path, std::string name, std::time_t date, geode::Popup* menuLayer, geode::Popup* mergeLayer, CCLayer* loadLayer);
+	bool init(std::filesystem::path path, std::string name, std::time_t date, MacroMetadata metadata, geode::Popup* menuLayer, geode::Popup* mergeLayer, CCLayer* loadLayer);
 
 	void onLoad(CCObject*);
 
@@ -43,6 +45,12 @@ public:
 	void selectMacro(bool single);
 
 	void onEditTags(CCObject*);
+
+	// Reads this macro's metadata (if not already known) and refreshes the
+	// displayed level name in place. Safe to call repeatedly/incrementally -
+	// used to spread the cost of reading many macros' metadata across
+	// several frames instead of doing it all at once.
+	void refreshMetadata();
 };
 
 enum class MacroSortMode { Name, Date, Duration };
@@ -77,6 +85,12 @@ public:
 	bool invertSort = false;
 	MacroSortMode sortMode = MacroSortMode::Date;
 
+	// Progressive metadata loading - avoids reading every macro file's
+	// metadata synchronously on open (which is slow with many macros).
+	// Instead the list opens instantly with basic info, and a few files'
+	// metadata get read per frame until all cells are enriched.
+	size_t metadataProgress = 0;
+
 	static LoadMacroLayer* create(geode::Popup* layer, geode::Popup* layer2, bool autosaves);
 
 	bool setup();
@@ -108,4 +122,6 @@ public:
 	void cycleSortMode(CCObject*);
 
 	void updateSortModeLabel();
+
+	void processMetadataChunk(float dt);
 };
