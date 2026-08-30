@@ -608,7 +608,7 @@ void LoadMacroLayer::addList(bool refresh, float prevScroll) {
 
   for (auto &e : entries) {
     MacroCell *cell =
-        MacroCell::create(e.path, e.name, e.date, menuLayer, mergeLayer,
+        MacroCell::create(e.path, e.name, e.date, e.metadata, menuLayer, mergeLayer,
                           static_cast<CCLayer *>(this));
     cells->addObject(cell);
   }

@@ -5,23 +5,6 @@ TagEditLayer *TagEditLayer::create(std::filesystem::path const &folder,
                                     std::string const &filename,
                                     CCLayer *loadLayer) {
   TagEditLayer *ret = new TagEditLayer();
-  if (ret->init(240, 130, Utils::getTexture().c_str())) {
-    ret->folder = folder;
-    ret->filename = filename;
-    ret->loadLayer = loadLayer;
-    ret->setup();
-    ret->autorelease();
-    return ret;
-  }
-
-  delete ret;
-  return nullptr;
-}
-
-TagEditLayer *TagEditLayer::create(std::filesystem::path const &folder,
-                                    std::string const &filename,
-                                    CCLayer *loadLayer) {
-  TagEditLayer *ret = new TagEditLayer();
   if (ret->init(240.f, 130.f)) {
     ret->folder = folder;
     ret->filename = filename;
