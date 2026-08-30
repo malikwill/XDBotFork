@@ -39,6 +39,7 @@ struct MacroMetadata {
     bool valid = false;
     std::string author;
     std::string levelName;
+    std::string botVersion;
     float duration = 0.f;
     float framerate = 240.f;
 };

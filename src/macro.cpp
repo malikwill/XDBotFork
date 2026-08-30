@@ -556,6 +556,7 @@ MacroMetadata Macro::peekMetadata(std::filesystem::path const &path) {
           result.valid = true;
           result.author = macro->author;
           result.levelName = macro->levelInfo.name;
+          result.botVersion = macro->botInfo.version;
           result.duration = macro->duration;
           result.framerate = macro->framerate;
         }
@@ -564,6 +565,7 @@ MacroMetadata Macro::peekMetadata(std::filesystem::path const &path) {
         result.valid = true;
         result.author = macro.author;
         result.levelName = macro.levelInfo.name;
+        result.botVersion = macro.botInfo.version;
         result.duration = macro.duration;
         result.framerate = macro.framerate;
       }
