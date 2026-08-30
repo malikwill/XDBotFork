@@ -67,6 +67,13 @@ void LoadMacroLayer::textChanged(CCTextInputNode *node) {
   } else
     searchOff->setVisible(false);
 
+  // Rebuilding the whole list is expensive with many macros, so wait for a
+  // short pause in typing instead of rebuilding on every single keystroke.
+  this->unschedule(schedule_selector(LoadMacroLayer::debouncedSearch));
+  this->scheduleOnce(schedule_selector(LoadMacroLayer::debouncedSearch), 0.25f);
+}
+
+void LoadMacroLayer::debouncedSearch(float dt) {
   reloadList(0);
 }
 
@@ -452,6 +459,8 @@ bool LoadMacroLayer::setup() {
 }
 
 void LoadMacroLayer::clearSearch(CCObject *) {
+  this->unschedule(schedule_selector(LoadMacroLayer::debouncedSearch));
+
   searchOff->setVisible(false);
   searchInput->setString("");
   search = "";
@@ -540,7 +549,7 @@ void LoadMacroLayer::addList(bool refresh, float prevScroll) {
 
   std::vector<Entry> entries;
 
-  bool needsMetadata = search != "" || sortMode == MacroSortMode::Duration;
+  bool allEntriesHaveMetadata = sortMode == MacroSortMode::Duration;
 
   for (auto &p : macros) {
 
@@ -554,13 +563,22 @@ void LoadMacroLayer::addList(bool refresh, float prevScroll) {
     if (p.extension() == ".json")
       name = name.substr(0, name.find_last_of('.'));
 
-    MacroMetadata metadata = needsMetadata ? Macro::peekMetadata(p) : MacroMetadata{};
+    bool nameMatches =
+        search == "" || Utils::toLower(name).find(search) != std::string::npos;
 
-    if (search != "") {
+    // Only pay for the metadata read when it's actually needed: Duration
+    // sort always needs it, and search only needs it as a fallback when the
+    // cheap filename check alone didn't already match.
+    bool readMetadataNow =
+        sortMode == MacroSortMode::Duration || (search != "" && !nameMatches);
+
+    MacroMetadata metadata =
+        readMetadataNow ? Macro::peekMetadata(p) : MacroMetadata{};
+
+    if (search != "" && !nameMatches) {
       std::vector<std::string> tags = Tags::get(folder, p.filename().string());
 
-      std::string haystack = Utils::toLower(name) + " " +
-                              Utils::toLower(metadata.author) + " " +
+      std::string haystack = Utils::toLower(metadata.author) + " " +
                               Utils::toLower(metadata.levelName);
       for (auto &t : tags)
         haystack += " " + t;
@@ -660,7 +678,7 @@ void LoadMacroLayer::addList(bool refresh, float prevScroll) {
 
   this->unschedule(schedule_selector(LoadMacroLayer::processMetadataChunk));
 
-  if (!needsMetadata && !allMacros.empty()) {
+  if (!allEntriesHaveMetadata && !allMacros.empty()) {
     metadataProgress = 0;
     this->schedule(schedule_selector(LoadMacroLayer::processMetadataChunk), 0.02f);
   }

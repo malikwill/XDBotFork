@@ -103,6 +103,8 @@ public:
 
 	void textChanged(CCTextInputNode* p) override;
 
+	void debouncedSearch(float dt);
+
 	void clearSearch(CCObject*);
 
 	void addList(bool refresh = false, float prevScroll = 0.f);
